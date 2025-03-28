@@ -10,20 +10,39 @@ import pandas as pd
 from email.message import EmailMessage
 import speech_recognition as sr
 from collections import defaultdict
-import sqlite3  # Import SQLite module
+import sqlite3
 from datetime import datetime
-import random  # For randomly selecting a station
+import random
 
-# 📌 Set page config as the FIRST Streamlit command
+# Set page config as the FIRST Streamlit command
 st.set_page_config(page_title="Railway Complaint System", layout="wide")
 
-# 🔹 Configure Gemini AI
-genai.configure(api_key="AIzaSyC2JpLpiqgnaH1BgL_-FTimpglTCxg45Dc")  # Replace with your valid API key
+# Configure Gemini AI
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 model = genai.GenerativeModel('gemini-1.5-flash')
 
-# 🔹 Define valid PNR numbers
+# Define valid PNR numbers
 VALID_PNR_NUMBERS = {f"PNRA{i}" for i in range(1, 11)} | {f"PNRB{i}" for i in range(1, 11)}
 
+# ... (rest of your imports and constants remain unchanged)
+
+# SQLite Database Setup
+DB_PATH = "complaints.db"
+
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    # ... (rest of the init_db function remains unchanged)
+
+# ... (rest of your code)
+
+# Sidebar setup
+st.sidebar.image("logo.jpg", width=250)  # Updated image path
+st.sidebar.title("📌 Navigation")
+menu = ["Home", "File a Complaint", "Admin Panel", "Help"]
+choice = st.sidebar.radio("Go to", menu)
+
+# ... (rest of your code)
 # 🚀 Supported languages for speech recognition
 LANGUAGE_MAP = {
     "Assamese": "as-IN", "Bengali": "bn-IN", "Bodo": "brx-IN",
