@@ -1,7 +1,6 @@
-echo "streamlit==1.20.0" > requirements.txt
-echo "google-generativeai==0.7.0" >> requirements.txt
-echo "sounddevice==0.4.6" >> requirements.txt
-echo "numpy==1.24.0" >> requirements.txt
-echo "pandas==2.0.0" >> requirements.txt
-echo "SpeechRecognition==3.10.0" >> requirements.txt
-echo "PyAudio==0.2.14" >> requirements.txt
+streamlit
+google-generativeai
+sounddevice
+numpy
+pandas
+speechrecognition
