@@ -14,35 +14,16 @@ import sqlite3
 from datetime import datetime
 import random
 
-# Set page config as the FIRST Streamlit command
+# 📌 Set page config as the FIRST Streamlit command
 st.set_page_config(page_title="Railway Complaint System", layout="wide")
 
-# Configure Gemini AI
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+# 🔹 Configure Gemini AI
+genai.configure(api_key="AIzaSyC2JpLpiqgnaH1BgL_-FTimpglTCxg45Dc")  # Replace with your valid API key
 model = genai.GenerativeModel('gemini-1.5-flash')
 
-# Define valid PNR numbers
+# 🔹 Define valid PNR numbers
 VALID_PNR_NUMBERS = {f"PNRA{i}" for i in range(1, 11)} | {f"PNRB{i}" for i in range(1, 11)}
 
-# ... (rest of your imports and constants remain unchanged)
-
-# SQLite Database Setup
-DB_PATH = "complaints.db"
-
-def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    # ... (rest of the init_db function remains unchanged)
-
-# ... (rest of your code)
-
-# Sidebar setup
-st.sidebar.image("logo.jpg", width=250)  # Updated image path
-st.sidebar.title("📌 Navigation")
-menu = ["Home", "File a Complaint", "Admin Panel", "Help"]
-choice = st.sidebar.radio("Go to", menu)
-
-# ... (rest of your code)
 # 🚀 Supported languages for speech recognition
 LANGUAGE_MAP = {
     "Assamese": "as-IN", "Bengali": "bn-IN", "Bodo": "brx-IN",
@@ -135,17 +116,17 @@ LANGUAGE_PLACEHOLDERS = {
 }
 
 # 🔧 SQLite Database Setup with Schema Migration
-DB_PATH = os.path.join(os.path.expanduser("~"), "Documents", "complaints.db")
-
 def init_db():
-    conn = sqlite3.connect(DB_PATH)
+    # Use os.path.join for proper path construction
+    db_path = os.path.join(r"C:\Users\user\Documents", "complaints.db")
+    conn = sqlite3.connect(db_path)
     c = conn.cursor()
 
     # Check if the table exists
     c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='complaints'")
     table_exists = c.fetchone()
 
-    # Define the expected columns (added station_name and station_phone)
+    # Define the expected columns
     expected_columns = [
         "id INTEGER PRIMARY KEY AUTOINCREMENT",
         "phone_number TEXT",
@@ -154,45 +135,31 @@ def init_db():
         "category_subcategory TEXT",
         "language TEXT",
         "timestamp TEXT",
-        "station_name TEXT",  # New column
-        "station_phone TEXT"  # New column
+        "station_name TEXT",
+        "station_phone TEXT"
     ]
 
     if not table_exists:
-        # Table doesn't exist, create it with the correct schema
         c.execute(f'''
             CREATE TABLE complaints (
                 {", ".join(expected_columns)}
             )
         ''')
     else:
-        # Table exists, check its schema
         c.execute("PRAGMA table_info(complaints)")
-        existing_columns = [col[1] for col in c.fetchall()]  # Get list of column names
-
-        # Expected column names (without the type definitions)
+        existing_columns = [col[1] for col in c.fetchall()]
         expected_column_names = [col.split()[0] for col in expected_columns]
-
-        # Check for missing columns
         missing_columns = [col for col in expected_column_names if col not in existing_columns]
 
         if missing_columns:
-            # If there are missing columns, we need to migrate the table
-            # Step 1: Rename the existing table
             c.execute("ALTER TABLE complaints RENAME TO complaints_old")
-
-            # Step 2: Create a new table with the correct schema
             c.execute(f'''
                 CREATE TABLE complaints (
                     {", ".join(expected_columns)}
                 )
             ''')
-
-            # Step 3: Get the columns in the old table
             c.execute("PRAGMA table_info(complaints_old)")
             old_columns = [col[1] for col in c.fetchall()]
-
-            # Step 4: Migrate data (only for columns that exist in the old table)
             common_columns = [col for col in expected_column_names if col in old_columns and col != "id"]
             if common_columns:
                 columns_str = ", ".join(common_columns)
@@ -201,8 +168,6 @@ def init_db():
                     SELECT {columns_str}
                     FROM complaints_old
                 ''')
-
-            # Step 5: Drop the old table
             c.execute("DROP TABLE complaints_old")
 
     conn.commit()
@@ -213,7 +178,8 @@ init_db()
 
 def save_to_db(complaint_data):
     try:
-        conn = sqlite3.connect(DB_PATH)
+        db_path = os.path.join(r"C:\Users\user\Documents", "complaints.db")
+        conn = sqlite3.connect(db_path)
         c = conn.cursor()
         c.execute('''
             INSERT INTO complaints (phone_number, pnr_number, complaint, category_subcategory, language, timestamp, station_name, station_phone)
@@ -238,7 +204,8 @@ def save_to_db(complaint_data):
 
 def read_from_db():
     try:
-        conn = sqlite3.connect(DB_PATH)
+        db_path = os.path.join(r"C:\Users\user\Documents", "complaints.db")
+        conn = sqlite3.connect(db_path)
         df = pd.read_sql_query("SELECT * FROM complaints", conn)
         return df
     except Exception as e:
@@ -248,7 +215,6 @@ def read_from_db():
         conn.close()
 
 def categorize_complaint(complaint_text):
-    # Categorize Complaint using Gemini AI
     prompt = (
         f"Classify this railway complaint: '{complaint_text}'. "
         f"Identify all relevant categories and subcategories. "
@@ -281,9 +247,7 @@ def categorize_complaint(complaint_text):
     if not valid_pairs:
         valid_pairs = [("MISCELLANEOUS", "Others")]
 
-    valid_pairs = list(set(valid_pairs))  # Remove duplicates
-
-    # Group subcategories by category
+    valid_pairs = list(set(valid_pairs))
     category_to_subcategories = defaultdict(list)
     for cat, sub in valid_pairs:
         category_to_subcategories[cat].append(sub)
@@ -291,19 +255,16 @@ def categorize_complaint(complaint_text):
     return category_to_subcategories
 
 def display_categories(category_to_subcategories):
-    # Display categories and subcategories in the desired format
     st.write("📂 Assigned Categories and Subcategories:")
     for category, subcategories in category_to_subcategories.items():
-        st.markdown(f'<p class="category-text">{category}</p>', unsafe_allow_html=True)  # Category in white
+        st.markdown(f'<p class="category-text">{category}</p>', unsafe_allow_html=True)
         for sub in subcategories:
-            st.markdown(f'<p class="subcategory-text">  - {sub}</p>', unsafe_allow_html=True)  # Subcategory in white
+            st.markdown(f'<p class="subcategory-text">  - {sub}</p>', unsafe_allow_html=True)
 
 def assign_station():
-    # Randomly select a station from the STATIONS list
     return random.choice(STATIONS)
 
 def display_station(station):
-    # Display the assigned station name and phone number
     st.write("🏢 Assigned Station:")
     st.markdown(f'<p class="category-text">{station["name"]}</p>', unsafe_allow_html=True)
     st.markdown(f'<p class="subcategory-text">📞 Phone: {station["phone"]}</p>', unsafe_allow_html=True)
@@ -341,7 +302,9 @@ def send_complaint_email(category, subcategories, complaint_text, user_phone, pn
     """, charset="utf-8")
 
     try:
-        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server = smtplib.SMTP("smtp.gmail.com", 587
+
+)
         server.starttls()
         server.login(sender_email, sender_password)
         server.send_message(msg)
@@ -350,13 +313,11 @@ def send_complaint_email(category, subcategories, complaint_text, user_phone, pn
     except Exception as e:
         st.error(f"❌ Failed to send email to {recipient_email}: {e}")
 
-# Function to apply styles (cached to prevent re-rendering)
 @st.cache_resource
 def set_styles():
     st.markdown(
         """
         <style>
-        /* Apply blurred background image using ::before pseudo-element */
         .stApp::before {
             content: "";
             position: fixed;
@@ -366,97 +327,78 @@ def set_styles():
             height: 100%;
             background: url("https://images.yourstory.com/cs/2/3fb20ae02dc911e9af58c17e6cc3d915/shutterstock1049569559-1599036632157.png?mode=crop&crop=faces&ar=2%3A1&format=auto&w=1920&q=75") no-repeat center center fixed;
             background-size: cover;
-            filter: blur(10px);  /* Blur set to 10px */
-            -webkit-filter: blur(10px);  /* For Safari compatibility */
-            z-index: -1;  /* Place it behind the content */
+            filter: blur(10px);
+            z-index: -1;
         }
-        /* Ensure the main app content is visible with a semi-transparent background */
         .stApp {
-            background: rgba(255, 255, 255, 0.85);  /* Increased opacity for better contrast with black text */
+            background: rgba(255, 255, 255, 0.85);
             position: relative;
-            z-index: 1;  /* Ensure content is above the blurred background */
-            min-height: 100vh;  /* Ensure the app takes full height */
+            z-index: 1;
+            min-height: 100vh;
         }
-        /* Sidebar styling - Transparent background to match the blurred image */
         [data-testid="stSidebar"] {
-            background: transparent !important;  /* Transparent to show blurred background */
-            z-index: 2;  /* Ensure sidebar is above the background */
+            background: transparent !important;
+            z-index: 2;
         }
-        /* Sidebar Title "Navigation" (Black) */
         [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
-            color: #000000 !important;  /* Pure black for "Navigation" */
+            color: #000000 !important;
         }
-        /* Sidebar Navigation Text (White) */
         [data-testid="stSidebarNav"] * {
             color: white !important;
             font-weight: bold !important;
-            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);  /* Subtle black shadow for contrast */
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
         }
-        /* Sidebar Links & Buttons (White) */
-        [data-testid="stSidebar"] a {
+        [data-testid="stSidebar"] a, [data-testid="stSidebar"] button {
             color: white !important;
         }
-        [data-testid="stSidebar"] button {
-            color: white !important;
-        }
-        /* Main content headings (White for contrast) */
         h1, h2, h3 {
             color: white !important;
             font-size: 35px !important;
-            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);  /* Add shadow for better readability */
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
         }
-        /* Subheadings and labels (Darker black for readability) */
         h4, h5, h6, p, label {
-            color: #000000 !important;  /* Pure black */
+            color: #000000 !important;
             font-size: 35px !important;
         }
-        /* Input fields styling */
         input, textarea {
             font-size: 30px !important;
-            color: #000000 !important;  /* Pure black text in inputs */
-            background-color: white !important;  /* White background for input fields */
-            border: 1px solid #000000 !important;  /* Pure black border for visibility */
-            font-family: 'Noto Sans', sans-serif !important;  /* Font supporting multiple languages */
+            color: #000000 !important;
+            background-color: white !important;
+            border: 1px solid #000000 !important;
+            font-family: 'Noto Sans', sans-serif !important;
         }
-        /* Button Styling */
         .stButton>button {
-            color: #000000 !important;  /* Pure black text on buttons */
+            color: #000000 !important;
             font-size: 30px !important;
             background-color: white !important;
-            border: 1px solid #000000 !important;  /* Pure black border for visibility */
+            border: 1px solid #000000 !important;
         }
-        /* Centered Home Title (White with shadow) */
         .centered-title {
             text-align: center;
-            font-size: 80px !important;  /* Larger title */
+            font-size: 80px !important;
             font-weight: bold;
             color: white !important;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);  /* Shadow for readability */
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
             margin-top: 50px;
         }
-        /* Category styling in Admin Panel (White with shadow) */
         .category-text {
             font-size: 35px !important;
             color: white !important;
-            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);  /* Shadow for readability */
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
         }
-        /* Subcategory styling in Admin Panel (White with shadow) */
         .subcategory-text {
             font-size: 28px !important;
             color: white !important;
-            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);  /* Shadow for readability */
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
         }
-        /* General text in main content (Darker black for readability) */
         .stMarkdown, .stText, .stRadio > label, .stSelectbox > label, .stTextInput > label, .stTextArea > label {
-            color: #000000 !important;  /* Pure black */
-            font-family: 'Noto Sans', sans-serif !important;  /* Font supporting multiple languages */
+            color: #000000 !important;
+            font-family: 'Noto Sans', sans-serif !important;
         }
-        /* Help page text (Darker black for readability) */
         .help-info, .stMarkdown {
-            color: #000000 !important;  /* Pure black */
-            font-family: 'Noto Sans', sans-serif !important;  /* Font supporting multiple languages */
+            color: #000000 !important;
+            font-family: 'Noto Sans', sans-serif !important;
         }
-        /* Ensure all text elements use a font that supports multiple languages */
         * {
             font-family: 'Noto Sans', sans-serif !important;
         }
@@ -466,37 +408,30 @@ def set_styles():
         unsafe_allow_html=True
     )
 
-# Apply styles after set_page_config
 set_styles()
 
-# Sidebar setup
-st.sidebar.image(r"C:\Users\user\Downloads\thanu 2025-03-27 at 20.46.20_f82eedda.jpg", width=250)  # Logo in sidebar
+st.sidebar.image(r"C:\Users\user\Downloads\thanu 2025-03-27 at 20.46.20_f82eedda.jpg", width=250)
 st.sidebar.title("📌 Navigation")
 menu = ["Home", "File a Complaint", "Admin Panel", "Help"]
 choice = st.sidebar.radio("Go to", menu)
 
-# Initialize session state
 if "audio_path" not in st.session_state:
     st.session_state["audio_path"] = None
 if "complaint_data" not in st.session_state:
     st.session_state["complaint_data"] = []
 
-# 📩 Submit Complaint (User Side)
 if choice == "File a Complaint":
     st.title("📩 File a Complaint")
     phone_number = st.text_input("📞 Enter Phone Number")
     pnr_number = st.text_input("🎟 Enter PNR Number")
 
-    # 🚨 Validate PNR
     if pnr_number and pnr_number not in VALID_PNR_NUMBERS:
         st.error("❌ Invalid PNR number! Please enter a valid PNR from PNRA1–PNRA10 or PNRB1–PNRB10.")
         st.stop()
 
-    # 🌍 Select Language
     language = st.selectbox("🌎 Choose Complaint Language", list(LANGUAGE_MAP.keys()))
     selected_lang_code = LANGUAGE_MAP[language]
 
-    # 🎤 Complaint Input Method
     st.subheader("📝 How would you like to submit your complaint?")
     input_method = st.radio("Select Input Method", ["Record/Upload Audio", "Type Complaint"])
 
@@ -528,7 +463,6 @@ if choice == "File a Complaint":
                 st.success("✅ File Uploaded Successfully.")
 
         if st.session_state["audio_path"] and st.button("📩 Submit Audio Complaint", key="submit_audio"):
-            # Transcribe the audio
             st.write("⏳ Transcribing Audio Complaint...")
             recognizer = sr.Recognizer()
             with sr.AudioFile(st.session_state["audio_path"]) as source:
@@ -544,54 +478,44 @@ if choice == "File a Complaint":
                 st.error(complaint_text)
                 st.stop()
 
-            # Categorize the complaint
             category_to_subcategories = categorize_complaint(complaint_text)
-
-            # Display categories and subcategories
             display_categories(category_to_subcategories)
 
-            # Store the complaint for admin review
             st.session_state["complaint_data"].append({
                 "phone_number": phone_number,
                 "pnr_number": pnr_number,
                 "audio_path": st.session_state["audio_path"],
                 "language_code": selected_lang_code,
                 "input_type": "audio",
-                "complaint_text": complaint_text  # Store the transcribed text
+                "complaint_text": complaint_text
             })
-            st.session_state["audio_path"] = None  # Reset audio path
+            st.session_state["audio_path"] = None
 
     elif input_method == "Type Complaint":
         st.subheader("✍ Type Your Complaint")
-        # Use the placeholder in the selected language
         placeholder_text = LANGUAGE_PLACEHOLDERS.get(language, "Enter your complaint here")
         typed_complaint = st.text_area("Enter your complaint here", height=150, placeholder=placeholder_text)
         
         if st.button("📩 Submit Typed Complaint", key="submit_typed"):
             if typed_complaint:
-                # Categorize the complaint
                 category_to_subcategories = categorize_complaint(typed_complaint)
-
-                # Display categories and subcategories
                 display_categories(category_to_subcategories)
 
-                # Store the complaint for admin review
                 st.session_state["complaint_data"].append({
                     "phone_number": phone_number,
                     "pnr_number": pnr_number,
                     "complaint_text": typed_complaint,
                     "language_code": selected_lang_code,
                     "input_type": "text",
-                    "language": language  # Store the language for reference
+                    "language": language
                 })
             else:
                 st.error("❌ Please enter a complaint before submitting.")
 
-# 🔒 Admin Panel
 elif choice == "Admin Panel":
     st.title("🔒 Admin Panel")
     password = st.text_input("Enter Admin Password", type="password")
-    if password != "admin123":  # Simple password check (replace with a secure method)
+    if password != "admin123":
         st.error("❌ Incorrect password!")
         st.stop()
 
@@ -604,28 +528,21 @@ elif choice == "Admin Panel":
             st.write(f"Phone: {complaint['phone_number']}, PNR: {complaint['pnr_number']}")
             st.write(f"Language: {complaint.get('language', 'Not specified')}")
 
-            # Handle complaint based on input type
             if complaint["input_type"] == "audio":
-                # Use the already transcribed text
                 complaint_text = complaint["complaint_text"]
-            else:  # input_type == "text"
+            else:
                 st.write("📝 Typed Complaint:")
                 complaint_text = complaint["complaint_text"]
 
             edited_text = st.text_area(f"Edit Complaint Text (Complaint {idx + 1}):", complaint_text, height=150, key=f"edit_{idx}")
 
             if st.button(f"Process Complaint {idx + 1}", key=f"process_{idx}"):
-                # Categorize Complaint using Gemini AI
                 category_to_subcategories = categorize_complaint(edited_text)
-
-                # Display categories and subcategories
                 display_categories(category_to_subcategories)
 
-                # Assign a station
                 assigned_station = assign_station()
                 display_station(assigned_station)
 
-                # Save to SQLite
                 category_subcategory_str = ", ".join([f"{cat} - {sub}" for cat, subs in category_to_subcategories.items() for sub in subs])
                 complaint_data = {
                     "phone_number": complaint["phone_number"],
@@ -639,15 +556,12 @@ elif choice == "Admin Panel":
                 }
                 save_to_db(complaint_data)
 
-                # Send emails for each unique category
                 for category, subcategories in category_to_subcategories.items():
                     send_complaint_email(category, subcategories, edited_text, complaint["phone_number"], complaint["pnr_number"], assigned_station)
 
-                # Remove processed complaint
                 st.session_state["complaint_data"].pop(idx)
                 st.success("✅ Complaint processed and removed from pending list!")
 
-    # Display all complaints from the database
     st.subheader("All Processed Complaints")
     df = read_from_db()
     if not df.empty:
@@ -655,7 +569,6 @@ elif choice == "Admin Panel":
     else:
         st.write("No processed complaints found in the database.")
 
-# ℹ Help Page
 elif choice == "Help":
     st.title("ℹ Help & Information")
     st.write("""
@@ -677,6 +590,5 @@ elif choice == "Help":
     For assistance, email: support@railwaycomplaints.com
     """)
 
-# Home Page
 elif choice == "Home":
     st.markdown('<h1 class="centered-title">🚆 Railway Complaint System</h1>', unsafe_allow_html=True)
